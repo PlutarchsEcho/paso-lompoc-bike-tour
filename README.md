@@ -15,6 +15,27 @@ over OpenStreetMap data; basemap tiles are Esri (switchable to topo, satellite o
 | 5 | Mon Oct 12 | O'Cairns Inn → Lompoc-Surf Amtrak | 10.41 | 122 ft |
 | | | **Total** | **164.44** | **10,022 ft** |
 
+## Notable climbs
+
+The map lists every climb that is **over half a mile averaging 6%+**, or contains
+**any pitch over 9%**. Click one to zoom to it and see its grade.
+
+| Climb | Day | Mile | Length | Gain | Avg | Max |
+|---|---|---|---|---|---|---|
+| Peachy Canyon Rd | 1 | 0.8–1.6 | 0.71 mi | 226 ft | 6.0% | 9.2% |
+| Peachy Canyon Rd | 1 | 2.1–3.0 | 0.85 mi | 266 ft | 5.9% | 10.6% |
+| Peachy Canyon Rd | 1 | 7.5–7.7 | 0.12 mi | 58 ft | 8.9% | 9.8% |
+| Willow Creek Rd | 1 | 11.7 | 0.09 mi | 44 ft | 9.0% | 9.0% |
+| Santa Rita Rd | 2 | 20.0–21.0 | 0.95 mi | 283 ft | 5.7% | 16.1% |
+| Old Creek Rd | 2 | 27.5–28.3 | 0.81 mi | 242 ft | 5.7% | 9.6% |
+| Cabrillo St | 2 | 32.1–32.7 | 0.61 mi | 171 ft | 5.3% | 14.1% |
+| Pomeroy Rd | 4 | 8.5–9.1 | 0.67 mi | 170 ft | 4.8% | 10.4% |
+| **Harris Grade Rd** | 4 | 39.4–41.0 | 1.68 mi | 485 ft | 5.5% | 12.3% |
+| Ocean Ave | 5 | 9.3–9.4 | 0.11 mi | 52 ft | 9.1% | 9.4% |
+
+Days 3 has no qualifying climb. Grades come from SRTM elevation data sampled every
+25 m and lightly smoothed; treat them as approximate, especially the maxima.
+
 ## Ride photos
 
 The map page accepts photo drops. It reads each photo's EXIF **GPS position and timestamp**
