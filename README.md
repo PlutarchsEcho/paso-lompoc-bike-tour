@@ -15,6 +15,23 @@ over OpenStreetMap data; basemap tiles are Esri (switchable to topo, satellite o
 | 5 | Mon Oct 12 | O'Cairns Inn → Lompoc-Surf Amtrak | 10.41 | 122 ft |
 | | | **Total** | **164.44** | **10,022 ft** |
 
+## Ride photos
+
+The map page accepts photo drops. It reads each photo's EXIF **GPS position and timestamp**
+in your browser, places it on the map, and reports how far it sits from the planned line.
+
+- Photos **never leave your computer** — there is no upload, no server, no account.
+- Photos more than **75 m** off the planned route are flagged red.
+- Off-route photos close in time and space are grouped; a group counts as a
+  **likely deviation** when it has 3+ photos or photos from 2+ different cameras.
+  A lone stray photo is reported as weak evidence, not a route change.
+- **Export placements** downloads a JSON of every photo's day, mile, offset and
+  timestamp, plus the detected deviations — no image data, just coordinates.
+
+Because GitHub Pages is static hosting, each person sees only their own photos.
+To merge everyone's, collect the exported JSON files; the deviation coordinates are
+what's needed to re-snap a route segment.
+
 ## Files
 
 - [`day1_paso_peachy_tincity_vinyl.gpx`](day1_paso_peachy_tincity_vinyl.gpx)
