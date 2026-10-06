@@ -20,18 +20,18 @@ over OpenStreetMap data; basemap tiles are Esri (switchable to topo, satellite o
 The map lists every climb that is **over half a mile averaging 6%+**, or contains
 **any pitch over 9%**. Click one to zoom to it and see its grade.
 
-| Climb | Day | Mile | Length | Gain | Avg | Max |
+| Climb | Day | Mile | Length | Gain | Avg | Steepest 0.25 mi |
 |---|---|---|---|---|---|---|
-| Peachy Canyon Rd | 1 | 0.8–1.6 | 0.71 mi | 226 ft | 6.0% | 9.2% |
-| Peachy Canyon Rd | 1 | 2.1–3.0 | 0.85 mi | 266 ft | 5.9% | 10.6% |
-| Peachy Canyon Rd | 1 | 7.5–7.7 | 0.12 mi | 58 ft | 8.9% | 9.8% |
-| Willow Creek Rd | 1 | 11.7 | 0.09 mi | 44 ft | 9.0% | 9.0% |
-| Santa Rita Rd | 2 | 20.0–21.0 | 0.95 mi | 283 ft | 5.7% | 16.1% |
-| Old Creek Rd | 2 | 27.5–28.3 | 0.81 mi | 242 ft | 5.7% | 9.6% |
-| Cabrillo St | 2 | 32.1–32.7 | 0.61 mi | 171 ft | 5.3% | 14.1% |
-| Pomeroy Rd | 4 | 8.5–9.1 | 0.67 mi | 170 ft | 4.8% | 10.4% |
-| **Harris Grade Rd** | 4 | 39.4–41.0 | 1.68 mi | 485 ft | 5.5% | 12.3% |
-| Ocean Ave | 5 | 9.3–9.4 | 0.11 mi | 52 ft | 9.1% | 9.4% |
+| Peachy Canyon Rd | 1 | 0.6–2.0 | 1.37 mi | 331 ft | 4.6% | 8.3% |
+| Peachy Canyon Rd | 1 | 2.2–2.9 | 0.75 mi | 267 ft | 6.8% | 8.2% |
+| Peachy Canyon Rd | 1 | 7.3–7.9 | 0.53 mi | 163 ft | 5.8% | 7.8% |
+| Santa Rita Rd | 2 | 19.6–21.0 | 1.35 mi | 354 ft | 5.0% | 7.9% |
+| Old Creek Rd | 2 | 27.6–28.2 | 0.67 mi | 252 ft | 7.1% | 8.6% |
+| Cabrillo St | 2 | 32.3–32.6 | 0.37 mi | 170 ft | 8.6% | 10.5% |
+| Pomeroy Rd | 4 | 8.6–9.0 | 0.34 mi | 150 ft | 8.3% | 9.5% |
+| **Harris Grade Rd** | 4 | 39.3–40.9 | 1.62 mi | 490 ft | 5.7% | 8.2% |
+
+The **whole climb** is drawn on the map, with a **black overlay on the steepest stretch**.
 
 Days 3 has no qualifying climb. Grades come from SRTM elevation data sampled every
 25 m and lightly smoothed; treat them as approximate, especially the maxima.
@@ -45,7 +45,10 @@ in your browser, places it on the map, and reports how far it sits from the plan
   It is a **speed bump, not security** — the page is static, so anyone can bypass the
   gate with browser dev tools. It keeps casual visitors out, nothing more.
 - Photos **never leave your computer** — there is no upload, no server, no account.
-- Photos more than **15 miles** from every route are **rejected** — they are not placed
+- A photo taken **on one of the ride dates** is trusted even when well off the line —
+  being 2 miles off on the right day is a real detour, not a bad photo. It is matched
+  to that day's route by date, not by whichever route happens to be nearest.
+- Photos more than **15 miles** from the route are **rejected** — they are not placed
   on the map and take no part in the deviation analysis. Distance is measured to the
   nearest point on *any* of the five days, so a shortcut or a side trip still counts.
 - Accepted photos more than **75 m** off the planned route are flagged red.
