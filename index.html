@@ -345,11 +345,13 @@ function render(){
   var devs = deviations();
   devs.forEach(function(d){
     h += '<div class="dev'+(d.confirmed?'':' ok')+'">'+
-      (d.confirmed ? '<b>Likely route deviation</b>' : 'Possible deviation (weak evidence)')+
+      (d.confirmed ? '<b>Rode off the planned line here</b>' : 'Possibly off-line (weak evidence)')+
       '<br>'+DAYS[d.day].title.split(' \u00b7')[0]+', mile '+d.fromMile.toFixed(1)+'\u2013'+d.toMile.toFixed(1)+
       '<br>'+d.count+' photo(s), '+d.cameras+' camera(s), avg '+d.avgOff+' m off</div>';
   });
   if (!devs.length) h += '<div class="dev ok">No deviations detected \u2014 photos match the planned routes.</div>';
+  h += '<div style="font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.4">'+
+       'Reporting only \u2014 the planned routes are fixed and are never altered by photos.</div>';
   st.innerHTML = h + rej;
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
                          rejectThresholdMi:REJECT_MI, rejected:rejected,

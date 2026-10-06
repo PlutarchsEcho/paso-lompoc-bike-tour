@@ -55,9 +55,12 @@ in your browser, places it on the map, and reports how far it sits from the plan
 - **Export placements** downloads a JSON of every photo's day, mile, offset and
   timestamp, plus the detected deviations — no image data, just coordinates.
 
-Because GitHub Pages is static hosting, each person sees only their own photos.
-To merge everyone's, collect the exported JSON files; the deviation coordinates are
-what's needed to re-snap a route segment.
+The planned routes are **fixed**. Photo analysis is reporting only — it tells you where
+the group rode off the planned line, and never rewrites a GPX. The five tracks are
+byte-identical to the originals and stay that way.
+
+Because GitHub Pages is static hosting, each person sees only their own photos; to
+compare, collect the exported JSON files.
 
 ## Files
 
