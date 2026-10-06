@@ -141,7 +141,7 @@ pbox.innerHTML =
   '<div id="plock"><input type="password" id="ppw" placeholder="Password" autocomplete="off">'+
     '<button id="pgo">Unlock</button><div id="pmsg"></div></div>'+
   '<div id="pbody" hidden>'+
-    '<div id="drop">Drop photos here, or click to choose<br><span style="opacity:.75">reads GPS + timestamp, stays in your browser</span></div>'+
+    '<div id="drop">Drop photos here, or click to choose<br><span style="opacity:.75">reads GPS + timestamp, stays in your browser \u00b7 rejects anything over 15 mi from a route</span></div>'+
     '<input type="file" id="pfile" multiple accept="image/*" hidden>'+
     '<div id="pstat">No photos loaded yet.</div>'+
     '<div class="btns"><button id="pexport">Export placements</button><button id="pclear">Clear</button></div>'+
@@ -192,8 +192,8 @@ DAYS.forEach(function(d, di){
     INDEX.push({lat:d.line[i][0], lon:d.line[i][1], day:di, mile:c/1609.34});
   }
 });
-var OFF_M = 75, CL_M = 400, CL_MIN = 45;
-var photos = [], photoLayer = L.layerGroup().addTo(map), noGps = 0;
+var OFF_M = 75, CL_M = 400, CL_MIN = 45, REJECT_MI = 15, REJECT_M = REJECT_MI * 1609.34;
+var photos = [], photoLayer = L.layerGroup().addTo(map), noGps = 0, rejected = [];
 
 function nearest(lat, lon){
   var best = null, bd = Infinity;
@@ -228,6 +228,10 @@ function addPhotos(files){
       var when = (x.DateTimeOriginal || x.CreateDate || null);
       var cam = [x.Make, x.Model].filter(Boolean).join(' ') || 'unknown camera';
       var n = nearest(lat, lon);
+      if (n.dist > REJECT_M){
+        rejected.push({name:f.name, miles:+(n.dist/1609.34).toFixed(1)});
+        step(); return;
+      }
       var p = {name:f.name, lat:lat, lon:lon, time:when ? new Date(when).toISOString() : null,
                camera:cam, day:n.pt.day, mile:+n.pt.mile.toFixed(2), off:Math.round(n.dist)};
       photos.push(p);
@@ -276,8 +280,15 @@ function deviations(){
 }
 function render(){
   var st = document.getElementById('pstat');
+  var rej = '';
+  if (rejected.length){
+    rej = '<div class="dev"><b>'+rejected.length+' photo(s) rejected</b> \u2014 more than '+
+      REJECT_MI+' mi from any route:<br>'+
+      rejected.slice(0,6).map(function(r){ return r.name+' ('+r.miles+' mi)'; }).join('<br>')+
+      (rejected.length > 6 ? '<br>\u2026and '+(rejected.length-6)+' more' : '')+'</div>';
+  }
   if (!photos.length){
-    st.innerHTML = noGps ? '<b>'+noGps+'</b> photo(s) had no GPS data.' : 'No photos loaded yet.';
+    st.innerHTML = (noGps ? '<b>'+noGps+'</b> photo(s) had no GPS data.' : 'No photos placed.') + rej;
     return;
   }
   var perDay = DAYS.map(function(_,i){ return photos.filter(function(p){return p.day===i;}).length; });
@@ -294,8 +305,9 @@ function render(){
       '<br>'+d.count+' photo(s), '+d.cameras+' camera(s), avg '+d.avgOff+' m off</div>';
   });
   if (!devs.length) h += '<div class="dev ok">No deviations detected \u2014 photos match the planned routes.</div>';
-  st.innerHTML = h;
+  st.innerHTML = h + rej;
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
+                         rejectThresholdMi:REJECT_MI, rejected:rejected,
                          photos:photos, deviations:devs};
 }
 var PW_SHA256 = '0c1296a5afa65e4018961320f221db9c1bdc7496b4da101de8a2f57b4f870695';
@@ -332,7 +344,7 @@ pfile.addEventListener('change', function(e){ addPhotos(e.target.files); });
   drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('hot'); }); });
 drop.addEventListener('drop', function(e){ addPhotos(e.dataTransfer.files); });
 document.getElementById('pclear').addEventListener('click', function(){
-  photos = []; noGps = 0; photoLayer.clearLayers(); render(); });
+  photos = []; noGps = 0; rejected = []; photoLayer.clearLayers(); render(); });
 document.getElementById('pexport').addEventListener('click', function(){
   if (!photos.length) return;
   var b = new Blob([JSON.stringify(window.__placements, null, 2)], {type:'application/json'});

@@ -24,7 +24,10 @@ in your browser, places it on the map, and reports how far it sits from the plan
   It is a **speed bump, not security** — the page is static, so anyone can bypass the
   gate with browser dev tools. It keeps casual visitors out, nothing more.
 - Photos **never leave your computer** — there is no upload, no server, no account.
-- Photos more than **75 m** off the planned route are flagged red.
+- Photos more than **15 miles** from every route are **rejected** — they are not placed
+  on the map and take no part in the deviation analysis. Distance is measured to the
+  nearest point on *any* of the five days, so a shortcut or a side trip still counts.
+- Accepted photos more than **75 m** off the planned route are flagged red.
 - Off-route photos close in time and space are grouped; a group counts as a
   **likely deviation** when it has 3+ photos or photos from 2+ different cameras.
   A lone stray photo is reported as weak evidence, not a route change.
