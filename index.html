@@ -66,7 +66,6 @@
   #plock input{font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--bd);
                border-radius:6px;background:var(--card);color:var(--fg);width:120px}
   #pmsg{font-size:11px;color:#b00020;margin-top:5px;min-height:14px;width:100%}
-  #pnote{font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.4}
   #pstat{font-size:11.5px;color:var(--mut);margin-top:7px;line-height:1.45}
   #pstat b{color:var(--fg)}
   .dev{margin-top:6px;padding:6px 8px;border-radius:6px;font-size:11px;line-height:1.4;
@@ -266,9 +265,7 @@ pbox.innerHTML =
     '<input type="file" id="pfile" multiple accept="image/*" hidden>'+
     '<div id="pstat">No photos loaded yet.</div>'+
     '<div class="btns"><button id="pexport">Export placements</button><button id="pclear">Clear</button></div>'+
-  '</div>'+
-  '<div id="pnote">The upload link is encrypted with the password \u2014 without it the link '+
-  'cannot be read from this page. Photos you drop on the map are read locally and never uploaded.</div>';
+  '</div>';
 side.appendChild(pbox);
 DAYS.forEach(function(d, i){
   tm += d.mi; tf += d.ft;
