@@ -75,6 +75,12 @@
   .pthumb{width:150px;display:block;border-radius:4px;margin-bottom:5px}
   .pclust{display:flex;align-items:center;justify-content:center;border-radius:50%;
           color:#fff;font-weight:700;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+  #nogps{margin-top:8px}
+  #nogps .galgrid{max-height:200px}
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:4000;display:flex;
+            align-items:center;justify-content:center;flex-direction:column;padding:20px;cursor:zoom-out}
+  .lightbox img{max-width:92vw;max-height:78vh;border-radius:6px;box-shadow:0 6px 30px rgba(0,0,0,.6)}
+  .lightbox .cap{color:#fff;font-size:12px;margin-top:10px;text-align:center;line-height:1.5}
   .gal{max-width:300px}
   .gal h4{margin:0 0 6px;font-size:13px}
   .galgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:5px;
@@ -341,7 +347,7 @@ function nearestOnDay(lat, lon, di){
   }
   return {dist:best, mile:bm};
 }
-var photos = [], noGps = 0, rejected = [];
+var photos = [], noGps = 0, rejected = [], noGpsPhotos = [];
 var photoLayer = L.markerClusterGroup({
   maxClusterRadius: 45,
   spiderfyOnMaxZoom: false,
@@ -381,6 +387,8 @@ photoLayer.on('clusterclick', function(e){
 document.addEventListener('click', function(ev){
   var t = ev.target;
   if (!t || !t.closest) return;
+  var ng = t.getAttribute && t.getAttribute('data-ng');
+  if (ng !== null && ng !== undefined && noGpsPhotos[+ng]){ showLightbox(noGpsPhotos[+ng]); return; }
   if (t.closest('.leaflet-popup-content') === null) return;
   var back = t.closest('[data-gback]');
   if (back && galPopup){
@@ -432,7 +440,18 @@ function addPhotos(files){
     exifr.parse(f, {gps:true, tiff:true, ifd0:true, exif:true}).then(function(x){
       var lat = x && (x.latitude != null ? x.latitude : null);
       var lon = x && (x.longitude != null ? x.longitude : null);
-      if (lat == null || lon == null){ noGps++; step(); return; }
+      if (lat == null || lon == null){
+        noGps++;
+        var when0 = (x && (x.DateTimeOriginal || x.CreateDate)) || null;
+        var cam0 = x ? [x.Make, x.Model].filter(Boolean).join(' ') : '';
+        thumb(f, function(src){
+          noGpsPhotos.push({name:f.name, thumb:src,
+            time: when0 ? new Date(when0).toISOString() : null,
+            camera: cam0 || 'unknown camera'});
+          step();
+        });
+        return;
+      }
       var when = (x.DateTimeOriginal || x.CreateDate || null);
       var cam = [x.Make, x.Model].filter(Boolean).join(' ') || 'unknown camera';
       var dayIdx = dayFromDate(when);
@@ -514,6 +533,28 @@ function deviations(){
       points:g.items.map(function(p){ return [p.lat, p.lon]; })};
   });
 }
+function nogpsHtml(){
+  if (!noGpsPhotos.length) return '';
+  var h = '<details id="nogps" class="sect"><summary>Photos without location'+
+          '<span class="cnt">'+noGpsPhotos.length+'</span></summary><div class="inner">'+
+          '<div class="cnote">no GPS in these files, so they cannot be placed on the map</div>'+
+          '<div class="galgrid">';
+  noGpsPhotos.forEach(function(p, i){
+    var when = p.time ? new Date(p.time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : 'no time';
+    h += '<div class="galcell"><img src="'+p.thumb+'" data-ng="'+i+'" title="'+p.name+'">'+when+'</div>';
+  });
+  return h + '</div></div></details>';
+}
+function showLightbox(p){
+  var box = document.createElement('div');
+  box.className = 'lightbox';
+  box.innerHTML = '<img src="'+p.thumb+'"><div class="cap"><b>'+p.name+'</b><br>'+
+    (p.time ? new Date(p.time).toLocaleString() : 'no timestamp')+'<br>'+
+    '<span style="opacity:.7">'+p.camera+'</span><br>'+
+    '<span style="opacity:.55">no location data \u2014 not placed on the map</span></div>';
+  box.addEventListener('click', function(){ box.remove(); });
+  document.body.appendChild(box);
+}
 function render(){
   var st = document.getElementById('pstat');
   var rej = '';
@@ -524,7 +565,7 @@ function render(){
       (rejected.length > 6 ? '<br>\u2026and '+(rejected.length-6)+' more' : '')+'</div>';
   }
   if (!photos.length){
-    st.innerHTML = (noGps ? '<b>'+noGps+'</b> photo(s) had no GPS data.' : 'No photos placed.') + rej;
+    st.innerHTML = (noGps ? '<b>'+noGps+'</b> photo(s) had no GPS data.' : 'No photos placed.') + rej + nogpsHtml();
     return;
   }
   var perDay = DAYS.map(function(_,i){ return photos.filter(function(p){return p.day===i;}).length; });
@@ -548,10 +589,12 @@ function render(){
        'route adjustment. Grey dots are pre-trip or from the train and never do. Coloured dots are '+
        'points of interest. The page cannot re-route: export the file and the adjustment is applied '+
        'offline with the router.</div>';
-  st.innerHTML = h + rej;
+  st.innerHTML = h + rej + nogpsHtml();
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
                          rejectThresholdMi:REJECT_MI, adjustMaxM:ADJUST_MAX_M, rejected:rejected,
                          roleCounts:photos.reduce(function(a,p){ a[p.role]=(a[p.role]||0)+1; return a; },{}),
+                         noLocation:noGpsPhotos.map(function(p){
+                           return {name:p.name, time:p.time, camera:p.camera}; }),
                          photos:photos, deviations:devs};
 }
 var LINK_BLOB = {"v": 1, "kdf": "PBKDF2-SHA256", "iter": 310000, "salt": "baOaA+L+iaOYHZt2IS+PLQ==", "iv": "7rXfmh7wgyYROeNH", "ct": "KjeixVI3A9Y0GMc4LW9IhTBJszquuOlBsoiPseup2X9gkgeu+AMmStOsPdLlt1SKOy+xLgFiS4MLYhL1VZb2UG9lFTSY4u0="};
@@ -608,7 +651,7 @@ pfile.addEventListener('change', function(e){ addPhotos(e.target.files); });
   drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('hot'); }); });
 drop.addEventListener('drop', function(e){ addPhotos(e.dataTransfer.files); });
 document.getElementById('pclear').addEventListener('click', function(){
-  photos = []; noGps = 0; rejected = []; photoLayer.clearLayers(); render(); });
+  photos = []; noGps = 0; rejected = []; noGpsPhotos = []; photoLayer.clearLayers(); render(); });
 document.getElementById('pexport').addEventListener('click', function(){
   if (!photos.length) return;
   var b = new Blob([JSON.stringify(window.__placements, null, 2)], {type:'application/json'});

@@ -69,6 +69,11 @@ Each placed photo gets one of four roles, shown by dot colour:
 | **pretrip** | grey | Not taken on a ride date. Never changes a route. |
 | **train** | grey | Day 5, past the Amtrak platform. Never changes a route. |
 
+Photos carrying **no GPS at all** are not discarded. They collect in a **"Photos without
+location"** album in the sidebar — a thumbnail grid with whatever timestamp and camera the
+file still has. Click any one to view it full size. They are listed in the export too, so
+nothing a rider sends goes missing just because their phone had location switched off.
+
 An adjustment is only **confirmed** when a cluster has 3+ photos or photos from 2+ cameras,
 so one person's stray GPS reading cannot move the line.
 
