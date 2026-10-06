@@ -44,6 +44,11 @@
   #drop{border:1.5px dashed var(--bd);border-radius:8px;padding:14px 8px;text-align:center;
         font-size:11.5px;color:var(--mut);cursor:pointer;transition:border-color .15s,background .15s}
   #drop:hover,#drop.hot{border-color:#2e8b57;background:rgba(46,139,87,.07);color:var(--fg)}
+  #plock{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  #plock input{font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--bd);
+               border-radius:6px;background:var(--card);color:var(--fg);width:120px}
+  #pmsg{font-size:11px;color:#b00020;margin-top:5px;min-height:14px;width:100%}
+  #pnote{font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.4}
   #pstat{font-size:11.5px;color:var(--mut);margin-top:7px;line-height:1.45}
   #pstat b{color:var(--fg)}
   .dev{margin-top:6px;padding:6px 8px;border-radius:6px;font-size:11px;line-height:1.4;
@@ -133,10 +138,16 @@ var pbox = document.createElement('div');
 pbox.id = 'photos';
 pbox.innerHTML =
   '<h2>Ride photos</h2>'+
-  '<div id="drop">Drop photos here, or click to choose<br><span style="opacity:.75">reads GPS + timestamp, stays in your browser</span></div>'+
-  '<input type="file" id="pfile" multiple accept="image/*" hidden>'+
-  '<div id="pstat">No photos loaded yet.</div>'+
-  '<div class="btns"><button id="pexport">Export placements</button><button id="pclear">Clear</button></div>';
+  '<div id="plock"><input type="password" id="ppw" placeholder="Password" autocomplete="off">'+
+    '<button id="pgo">Unlock</button><div id="pmsg"></div></div>'+
+  '<div id="pbody" hidden>'+
+    '<div id="drop">Drop photos here, or click to choose<br><span style="opacity:.75">reads GPS + timestamp, stays in your browser</span></div>'+
+    '<input type="file" id="pfile" multiple accept="image/*" hidden>'+
+    '<div id="pstat">No photos loaded yet.</div>'+
+    '<div class="btns"><button id="pexport">Export placements</button><button id="pclear">Clear</button></div>'+
+  '</div>'+
+  '<div id="pnote">Shared gate, not real security \u2014 anyone can bypass it with browser dev tools. '+
+  'Your photos are read locally and never uploaded either way.</div>';
 side.appendChild(pbox);
 DAYS.forEach(function(d, i){
   tm += d.mi; tf += d.ft;
@@ -287,6 +298,31 @@ function render(){
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
                          photos:photos, deviations:devs};
 }
+var PW_SHA256 = '0c1296a5afa65e4018961320f221db9c1bdc7496b4da101de8a2f57b4f870695';
+function sha256hex(txt){
+  var b = new TextEncoder().encode(txt);
+  return crypto.subtle.digest('SHA-256', b).then(function(buf){
+    return [].map.call(new Uint8Array(buf), function(x){ return ('0'+x.toString(16)).slice(-2); }).join('');
+  });
+}
+function unlock(){
+  document.getElementById('plock').hidden = true;
+  document.getElementById('pbody').hidden = false;
+}
+function tryUnlock(){
+  var v = document.getElementById('ppw').value, msg = document.getElementById('pmsg');
+  if (!v) { msg.textContent = 'Enter the password.'; return; }
+  sha256hex(v).then(function(h){
+    if (h === PW_SHA256){
+      try { sessionStorage.setItem('photoUnlock','1'); } catch(e){}
+      msg.textContent = ''; unlock();
+    } else { msg.textContent = 'Wrong password.'; }
+  }).catch(function(){ msg.textContent = 'Could not check password (needs a secure context).'; });
+}
+document.getElementById('pgo').addEventListener('click', tryUnlock);
+document.getElementById('ppw').addEventListener('keydown', function(e){ if (e.key === 'Enter') tryUnlock(); });
+try { if (sessionStorage.getItem('photoUnlock') === '1') unlock(); } catch(e){}
+
 var drop = document.getElementById('drop'), pfile = document.getElementById('pfile');
 drop.addEventListener('click', function(){ pfile.click(); });
 pfile.addEventListener('change', function(e){ addPhotos(e.target.files); });

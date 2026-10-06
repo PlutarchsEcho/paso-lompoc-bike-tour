@@ -20,6 +20,9 @@ over OpenStreetMap data; basemap tiles are Esri (switchable to topo, satellite o
 The map page accepts photo drops. It reads each photo's EXIF **GPS position and timestamp**
 in your browser, places it on the map, and reports how far it sits from the planned line.
 
+- The panel is behind a shared password (ask the group).
+  It is a **speed bump, not security** — the page is static, so anyone can bypass the
+  gate with browser dev tools. It keeps casual visitors out, nothing more.
 - Photos **never leave your computer** — there is no upload, no server, no account.
 - Photos more than **75 m** off the planned route are flagged red.
 - Off-route photos close in time and space are grouped; a group counts as a
