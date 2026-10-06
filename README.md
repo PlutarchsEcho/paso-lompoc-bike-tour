@@ -60,8 +60,9 @@ in your browser, places it on the map, and reports how far it sits from the plan
 - **Export placements** downloads a JSON of every photo's day, mile, offset and
   timestamp, plus the detected deviations — no image data, just coordinates.
 
-The planned routes are **fixed**. Photo analysis is reporting only — it tells you where
-the group rode off the planned line, and never rewrites a GPX. The five tracks are
+The planned routes are **fixed**. Photos are logged as **dots on the map only** — they are
+never added to a route, and no route is re-drawn to pass through a photo's position.
+The off-line notes are observations for your interest, nothing more. The five tracks are
 byte-identical to the originals and stay that way.
 
 Because GitHub Pages is static hosting, each person sees only their own photos; to

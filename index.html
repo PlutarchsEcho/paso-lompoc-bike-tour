@@ -308,7 +308,6 @@ DAYS.forEach(function(d, di){
   }
 });
 var OFF_M = 75, CL_M = 400, CL_MIN = 45, REJECT_MI = 15, REJECT_M = REJECT_MI * 1609.34;
-var NUDGE_MAX_M = 200;
 // tour dates: a photo taken on a day's date is treated as genuine even when well off the line
 var DAY_DATES = ['2026-10-08','2026-10-09','2026-10-10','2026-10-11','2026-10-12'];
 function localDateStr(d){
@@ -424,8 +423,7 @@ function deviations(){
       fromMile:Math.min.apply(null,miles), toMile:Math.max.apply(null,miles),
       avgOff:Math.round(g.items.reduce(function(a,p){return a+p.off;},0)/g.items.length),
       confirmed:(g.items.length >= 3 || nc >= 2),
-      adjustable:((g.items.length >= 3 || nc >= 2) &&
-                  (g.items.reduce(function(a,p){return a+p.off;},0)/g.items.length) <= NUDGE_MAX_M),
+
       points:g.items.map(function(p){ return [p.lat, p.lon]; })};
   });
 }
@@ -450,26 +448,20 @@ function render(){
     '<br><b>'+offN+'</b> more than '+OFF_M+' m off the planned line.';
   var devs = deviations();
   devs.forEach(function(d){
-    var head;
-    if (d.adjustable) head = '<b>Minor \u2014 route nudge candidate</b>';
-    else if (d.confirmed) head = '<b>Rode off the planned line</b> (too far to apply)';
-    else head = 'Possibly off-line (weak evidence)';
-    h += '<div class="dev'+(d.adjustable ? ' ok' : (d.confirmed ? '' : ' ok'))+'">'+ head +
+    var head = d.confirmed ? '<b>Rode off the planned line here</b>'
+                           : 'Possibly off-line (weak evidence)';
+    h += '<div class="dev'+(d.confirmed ? '' : ' ok')+'">'+ head +
       '<br>'+DAYS[d.day].title.split(' \u00b7')[0]+', mile '+d.fromMile.toFixed(1)+'\u2013'+d.toMile.toFixed(1)+
       '<br>'+d.count+' photo(s), '+d.cameras+' camera(s), avg '+d.avgOff+' m off'+
-      (d.adjustable ? '<br><span style="opacity:.75">within '+NUDGE_MAX_M+' m \u2014 eligible for a route nudge</span>'
-                    : (d.confirmed ? '<br><span style="opacity:.75">over '+NUDGE_MAX_M+' m \u2014 reported only</span>' : ''))+
       '</div>';
   });
   if (!devs.length) h += '<div class="dev ok">No deviations detected \u2014 photos match the planned routes.</div>';
   h += '<div style="font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.4">'+
-       'Only deviations marked <b>route nudge candidate</b> (confirmed, and within '+NUDGE_MAX_M+
-       ' m) are eligible to change a route. Anything further off is reported only. '+
-       'Nudges are applied offline from the exported file, not by this page.</div>';
+       'Photos are logged as dots only. The planned routes are fixed and are never '+
+       'modified or re-drawn to include a photo position.</div>';
   st.innerHTML = h + rej;
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
                          rejectThresholdMi:REJECT_MI, rejected:rejected,
-                         nudgeMaxM:NUDGE_MAX_M,
                          photos:photos, deviations:devs};
 }
 var LINK_BLOB = {"v": 1, "kdf": "PBKDF2-SHA256", "iter": 310000, "salt": "baOaA+L+iaOYHZt2IS+PLQ==", "iv": "7rXfmh7wgyYROeNH", "ct": "KjeixVI3A9Y0GMc4LW9IhTBJszquuOlBsoiPseup2X9gkgeu+AMmStOsPdLlt1SKOy+xLgFiS4MLYhL1VZb2UG9lFTSY4u0="};
