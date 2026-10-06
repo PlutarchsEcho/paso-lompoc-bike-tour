@@ -60,9 +60,20 @@ in your browser, places it on the map, and reports how far it sits from the plan
 - **Export placements** downloads a JSON of every photo's day, mile, offset and
   timestamp, plus the detected deviations — no image data, just coordinates.
 
-The planned routes are **fixed**. Photos are logged as **dots on the map only** — they are
-never added to a route, and no route is re-drawn to pass through a photo's position.
-The off-line notes are observations for your interest, nothing more. The five tracks are
+Each placed photo gets one of four roles, shown by dot colour:
+
+| Role | Dot | Meaning |
+|---|---|---|
+| **adjust** | orange | On a ride date and **75–250 m** off the line — close enough that the real route probably differed slightly. These propose a route adjustment. |
+| **poi** | day colour | On the line, or further than 250 m off — a point of interest. Never changes a route. |
+| **pretrip** | grey | Not taken on a ride date. Never changes a route. |
+| **train** | grey | Day 5, past the Amtrak platform. Never changes a route. |
+
+An adjustment is only **confirmed** when a cluster has 3+ photos or photos from 2+ cameras,
+so one person's stray GPS reading cannot move the line.
+
+The page itself never re-routes — it cannot, being static. Export the placements and the
+adjustment is applied offline with BRouter, then the updated GPX is published here. The five tracks are
 byte-identical to the originals and stay that way.
 
 Because GitHub Pages is static hosting, each person sees only their own photos; to

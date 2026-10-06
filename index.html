@@ -319,6 +319,10 @@ DAYS.forEach(function(d, di){
   }
 });
 var OFF_M = 75, CL_M = 400, CL_MIN = 45, REJECT_MI = 15, REJECT_M = REJECT_MI * 1609.34;
+// a photo this far off the line, on the right day, is evidence the real line differed a bit
+var ADJUST_MAX_M = 250;
+// day 5 ends at the Amtrak platform; anything from the train itself must never move a route
+var TRAIN_DAY = 4, TRAIN_TAIL_MI = 0.5;
 // tour dates: a photo taken on a day's date is treated as genuine even when well off the line
 var DAY_DATES = ['2026-10-08','2026-10-09','2026-10-10','2026-10-11','2026-10-12'];
 function localDateStr(d){
@@ -448,13 +452,22 @@ function addPhotos(files){
         rejected.push({name:f.name, miles:+(n.dist/1609.34).toFixed(1), reason:'right date but over '+REJECT_MI+' mi away'});
         step(); return;
       }
+      var dayEndMi = DAYS[n.pt.day].mi;
+      var onTrain = dayMatch && n.pt.day === TRAIN_DAY && (dayEndMi - n.pt.mile) < TRAIN_TAIL_MI
+                    && n.dist > OFF_M;
+      var role;
+      if (!dayMatch) role = 'pretrip';
+      else if (onTrain) role = 'train';
+      else if (n.dist > OFF_M && n.dist <= ADJUST_MAX_M) role = 'adjust';
+      else role = 'poi';
       var p = {name:f.name, lat:lat, lon:lon, time:when ? new Date(when).toISOString() : null,
                camera:cam, day:n.pt.day, mile:+n.pt.mile.toFixed(2), off:Math.round(n.dist),
-               dayMatch:dayMatch};
+               dayMatch:dayMatch, role:role};
       photos.push(p);
       thumb(f, function(src){
         p.thumb = src;
-        var col = DAYS[p.day].color, bad = p.off > OFF_M;
+        var ROLE_COL = {adjust:'#e07a00', poi:DAYS[p.day].color, pretrip:'#8a8a90', train:'#8a8a90'};
+        var col = ROLE_COL[p.role] || DAYS[p.day].color, bad = (p.role === 'adjust');
         var mk = L.marker([lat,lon], {icon:L.divIcon({className:'',
           html:'<div class="pmark" style="background:'+(bad?'#b00020':col)+'"></div>',
           iconSize:[13,13], iconAnchor:[6,6]}), _photo:p, _bad:bad});
@@ -463,8 +476,10 @@ function addPhotos(files){
           '<br>'+(p.time ? new Date(p.time).toLocaleString() : 'no timestamp')+
           '<br>'+(bad ? '<span style="color:#b00020">'+(p.off>1609 ? (p.off/1609.34).toFixed(1)+' mi' : p.off+' m')+' off the planned route</span>'
                       : p.off+' m from route')+
-          (p.dayMatch ? '<br><span style="color:#2e8b57">\u2713 taken on this day\u2019s date</span>'
-                      : '<br><span style="opacity:.6">date does not match a ride day</span>')+
+          '<br>'+({adjust:'<span style="color:#e07a00"><b>close to the line \u2014 route adjustment candidate</b></span>',
+                   poi:'<span style="opacity:.7">point of interest</span>',
+                   train:'<span style="opacity:.7">from the train \u2014 never adjusts a route</span>',
+                   pretrip:'<span style="opacity:.7">not on a ride date \u2014 pre-trip image</span>'}[p.role])+
           '<br><span style="opacity:.6">'+p.camera+'</span>');
         mk.addTo(photoLayer);
         step();
@@ -474,7 +489,7 @@ function addPhotos(files){
   });
 }
 function deviations(){
-  var off = photos.filter(function(p){ return p.off > OFF_M && p.time; })
+  var off = photos.filter(function(p){ return p.role === 'adjust' && p.time; })
                   .sort(function(a,b){ return new Date(a.time) - new Date(b.time); });
   var groups = [];
   off.forEach(function(p){
@@ -520,8 +535,8 @@ function render(){
     '<br><b>'+offN+'</b> more than '+OFF_M+' m off the planned line.';
   var devs = deviations();
   devs.forEach(function(d){
-    var head = d.confirmed ? '<b>Rode off the planned line here</b>'
-                           : 'Possibly off-line (weak evidence)';
+    var head = d.confirmed ? '<b>Route adjustment proposed here</b>'
+                           : 'Possible adjustment (weak evidence \u2014 one photo)';
     h += '<div class="dev'+(d.confirmed ? '' : ' ok')+'">'+ head +
       '<br>'+DAYS[d.day].title.split(' \u00b7')[0]+', mile '+d.fromMile.toFixed(1)+'\u2013'+d.toMile.toFixed(1)+
       '<br>'+d.count+' photo(s), '+d.cameras+' camera(s), avg '+d.avgOff+' m off'+
@@ -529,11 +544,14 @@ function render(){
   });
   if (!devs.length) h += '<div class="dev ok">No deviations detected \u2014 photos match the planned routes.</div>';
   h += '<div style="font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.4">'+
-       'Photos are logged as dots only. The planned routes are fixed and are never '+
-       'modified or re-drawn to include a photo position.</div>';
+       'Orange dots sit within '+ADJUST_MAX_M+' m of the line on a ride date \u2014 these propose a '+
+       'route adjustment. Grey dots are pre-trip or from the train and never do. Coloured dots are '+
+       'points of interest. The page cannot re-route: export the file and the adjustment is applied '+
+       'offline with the router.</div>';
   st.innerHTML = h + rej;
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
-                         rejectThresholdMi:REJECT_MI, rejected:rejected,
+                         rejectThresholdMi:REJECT_MI, adjustMaxM:ADJUST_MAX_M, rejected:rejected,
+                         roleCounts:photos.reduce(function(a,p){ a[p.role]=(a[p.role]||0)+1; return a; },{}),
                          photos:photos, deviations:devs};
 }
 var LINK_BLOB = {"v": 1, "kdf": "PBKDF2-SHA256", "iter": 310000, "salt": "baOaA+L+iaOYHZt2IS+PLQ==", "iv": "7rXfmh7wgyYROeNH", "ct": "KjeixVI3A9Y0GMc4LW9IhTBJszquuOlBsoiPseup2X9gkgeu+AMmStOsPdLlt1SKOy+xLgFiS4MLYhL1VZb2UG9lFTSY4u0="};
