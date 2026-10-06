@@ -39,6 +39,15 @@
   .pin{font-size:11px;font-weight:700;color:#fff;background:#111;border-radius:50%;
        width:20px;height:20px;display:flex;align-items:center;justify-content:center;
        border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  details.sect{border:1px solid var(--bd);border-radius:9px;margin:0 0 9px;background:var(--bg)}
+  details.sect>summary{list-style:none;cursor:pointer;padding:9px 10px;font-size:13px;font-weight:650;
+                       display:flex;align-items:center;gap:7px;user-select:none}
+  details.sect>summary::-webkit-details-marker{display:none}
+  details.sect>summary::before{content:'\25b8';font-size:11px;opacity:.6;transition:transform .15s}
+  details.sect[open]>summary::before{transform:rotate(90deg)}
+  details.sect>summary:hover{background:var(--card);border-radius:9px}
+  details.sect>summary .cnt{margin-left:auto;font-size:11px;font-weight:400;color:var(--mut)}
+  details.sect .inner{padding:0 10px 9px}
   #climbs,#grades{border:1px solid var(--bd);border-radius:9px;padding:9px 10px;margin:0 0 9px;background:var(--bg)}
   #climbs h2,#grades h2{margin:0 0 3px;font-size:13px;font-weight:650}
   .cnote{font-size:10.5px;color:var(--mut);margin-bottom:7px}
@@ -188,9 +197,10 @@ function showClimb(i){
   map.fitBounds(L.latLngBounds(c.line).pad(0.35));
   c._pl.openPopup();
 }
-var cbox = document.createElement('div');
-cbox.id = 'climbs';
-cbox.innerHTML = '<h2>Notable climbs</h2><div class="cnote">whole climb shown; black overlay marks the steepest stretch \u00b7 click to zoom</div>'+
+var cbox = document.createElement('details');
+cbox.id = 'climbs'; cbox.className = 'sect';
+cbox.innerHTML = '<summary>Notable climbs<span class="cnt">'+CLIMBS.length+'</span></summary>'+
+  '<div class="inner"><div class="cnote">whole climb shown; black overlay marks the steepest stretch \u00b7 click to zoom</div>'+
   CLIMBS.map(function(c, i){
     return '<div class="climb" data-c="'+i+'">'+
       '<span class="cbar" style="background:'+climbColor(c.maxPct)+'"></span>'+
@@ -200,7 +210,7 @@ cbox.innerHTML = '<h2>Notable climbs</h2><div class="cnote">whole climb shown; b
       c.lenMi.toFixed(2)+' mi \u00b7 '+c.gainFt+' ft \u00b7 avg '+c.avgPct.toFixed(1)+'%<br>'+
       'steepest '+c.steep.lenMi.toFixed(2)+' mi @ '+c.steep.pct.toFixed(1)+
       '% \u00b7 max '+c.maxPct.toFixed(1)+'%</span></span></div>';
-  }).join('');
+  }).join('') + '</div>';
 cbox.addEventListener('click', function(e){
   var row = e.target.closest('.climb');
   if (row) showClimb(+row.getAttribute('data-c'));
@@ -208,9 +218,10 @@ cbox.addEventListener('click', function(e){
 side.appendChild(cbox);
 
 if (GRADES.length) {
-  var gbox = document.createElement('div');
-  gbox.id = 'grades';
-  gbox.innerHTML = '<h2>Long easy grades</h2><div class="cnote">\u00bd mile or longer at 2.5\u20136% \u2014 the drags that sneak up on you \u00b7 click to zoom</div>'+
+  var gbox = document.createElement('details');
+  gbox.id = 'grades'; gbox.className = 'sect';
+  gbox.innerHTML = '<summary>Long easy grades<span class="cnt">'+GRADES.length+'</span></summary>'+
+    '<div class="inner"><div class="cnote">\u00bd mile or longer at 2.5\u20136% \u2014 the drags that sneak up on you \u00b7 click to zoom</div>'+
     GRADES.map(function(c, i){
       return '<div class="climb" data-g="'+i+'">'+
         '<span class="cbar" style="background:'+gradeColor(c.avgPct)+'"></span>'+
@@ -218,7 +229,7 @@ if (GRADES.length) {
         '<span class="cmeta">mi '+c.startMi.toFixed(1)+'\u2013'+c.endMi.toFixed(1)+'<br>'+
         c.lenMi.toFixed(2)+' mi \u00b7 '+c.gainFt+' ft \u00b7 avg '+c.avgPct.toFixed(1)+
         '% \u00b7 max '+c.maxPct.toFixed(1)+'%</span></span></div>';
-    }).join('');
+    }).join('') + '</div>';
   gbox.addEventListener('click', function(e){
     var row = e.target.closest('.climb');
     if (row) showGrade(+row.getAttribute('data-g'));
@@ -257,12 +268,23 @@ DAYS.forEach(function(d, i){
     '<div class="btns"><button data-z="'+i+'">Zoom to day</button><button data-o="'+i+'">Only this day</button><button data-t="'+i+'">Hide</button></div>';
   side.appendChild(el);
 });
+var dbox = document.createElement('details');
+dbox.className = 'sect'; dbox.open = true;
+dbox.innerHTML = '<summary>The five days<span class="cnt">164.4 mi</span></summary>';
+var dinner = document.createElement('div'); dinner.className = 'inner';
+[].slice.call(side.querySelectorAll('.day')).forEach(function(d){ dinner.appendChild(d); });
+dbox.appendChild(dinner);
+side.appendChild(dbox);
+
 var tot = document.createElement('div');
 tot.className = 'tot';
 tot.innerHTML = '<b>'+tm.toFixed(1)+' mi</b> total &nbsp;·&nbsp; <b>'+tf.toLocaleString()+' ft</b> of climbing'+
   '<div class="hint">Lines are the actual GPX tracks loaded onto your bike computer, not a re-route. ' +
   'Numbered pins are the day’s planned stops. Needs an internet connection for the map tiles.</div>';
 side.appendChild(tot);
+
+// riders need the upload link first, not after a scroll hunt
+side.insertBefore(pbox, bar.nextSibling);
 
 function setVisible(i, on){
   var card = document.querySelectorAll('.day')[i];
