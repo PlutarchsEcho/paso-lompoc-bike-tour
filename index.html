@@ -232,14 +232,15 @@ pbox.innerHTML =
   '<h2>Ride photos</h2>'+
   '<div id="plock"><input type="password" id="ppw" placeholder="Password" autocomplete="off">'+
     '<button id="pgo">Unlock</button><div id="pmsg"></div></div>'+
+  '<div id="uplink" class="dev ok" hidden style="margin-bottom:8px"></div>'+
   '<div id="pbody" hidden>'+
     '<div id="drop">Drop photos here, or click to choose<br><span style="opacity:.75">reads GPS + timestamp, stays in your browser \u00b7 rejects anything over 15 mi from a route</span></div>'+
     '<input type="file" id="pfile" multiple accept="image/*" hidden>'+
     '<div id="pstat">No photos loaded yet.</div>'+
     '<div class="btns"><button id="pexport">Export placements</button><button id="pclear">Clear</button></div>'+
   '</div>'+
-  '<div id="pnote">Shared gate, not real security \u2014 anyone can bypass it with browser dev tools. '+
-  'Your photos are read locally and never uploaded either way.</div>';
+  '<div id="pnote">The upload link is encrypted with the password \u2014 without it the link '+
+  'cannot be read from this page. Photos you drop on the map are read locally and never uploaded.</div>';
 side.appendChild(pbox);
 DAYS.forEach(function(d, i){
   tm += d.mi; tf += d.ft;
@@ -449,30 +450,50 @@ function render(){
                          nudgeMaxM:NUDGE_MAX_M,
                          photos:photos, deviations:devs};
 }
-var PW_SHA256 = '0c1296a5afa65e4018961320f221db9c1bdc7496b4da101de8a2f57b4f870695';
-function sha256hex(txt){
-  var b = new TextEncoder().encode(txt);
-  return crypto.subtle.digest('SHA-256', b).then(function(buf){
-    return [].map.call(new Uint8Array(buf), function(x){ return ('0'+x.toString(16)).slice(-2); }).join('');
-  });
+var LINK_BLOB = {"v": 1, "kdf": "PBKDF2-SHA256", "iter": 310000, "salt": "baOaA+L+iaOYHZt2IS+PLQ==", "iv": "7rXfmh7wgyYROeNH", "ct": "KjeixVI3A9Y0GMc4LW9IhTBJszquuOlBsoiPseup2X9gkgeu+AMmStOsPdLlt1SKOy+xLgFiS4MLYhL1VZb2UG9lFTSY4u0="};
+function b64(s){ return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); }); }
+function decryptLink(pw){
+  var enc = new TextEncoder();
+  return crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey'])
+   .then(function(base){
+     return crypto.subtle.deriveKey(
+       {name:'PBKDF2', salt:b64(LINK_BLOB.salt), iterations:LINK_BLOB.iter, hash:'SHA-256'},
+       base, {name:'AES-GCM', length:256}, false, ['decrypt']);
+   })
+   .then(function(key){
+     return crypto.subtle.decrypt({name:'AES-GCM', iv:b64(LINK_BLOB.iv)}, key, b64(LINK_BLOB.ct));
+   })
+   .then(function(buf){ return new TextDecoder().decode(buf); });
 }
-function unlock(){
+function unlock(url){
   document.getElementById('plock').hidden = true;
   document.getElementById('pbody').hidden = false;
+  var box = document.getElementById('uplink');
+  if (url && box){
+    box.hidden = false;
+    box.innerHTML = '<b>Upload your photos to the group folder</b><br>'+
+      '<a href="'+url+'" target="_blank" rel="noopener noreferrer">'+url+'</a>'+
+      '<div style="font-size:10.5px;opacity:.75;margin-top:4px">'+
+      'Opens a Synology File Request \u2014 upload only, nobody can browse the folder. '+
+      'Keep this link to the group.</div>';
+  }
 }
 function tryUnlock(){
   var v = document.getElementById('ppw').value, msg = document.getElementById('pmsg');
   if (!v) { msg.textContent = 'Enter the password.'; return; }
-  sha256hex(v).then(function(h){
-    if (h === PW_SHA256){
-      try { sessionStorage.setItem('photoUnlock','1'); } catch(e){}
-      msg.textContent = ''; unlock();
-    } else { msg.textContent = 'Wrong password.'; }
-  }).catch(function(){ msg.textContent = 'Could not check password (needs a secure context).'; });
+  msg.style.color = 'var(--mut)'; msg.textContent = 'Checking\u2026';
+  decryptLink(v).then(function(url){
+    try { sessionStorage.setItem('photoUnlockUrl', url); } catch(e){}
+    msg.textContent = ''; msg.style.color = '#b00020';
+    unlock(url);
+  }).catch(function(){
+    msg.style.color = '#b00020';
+    msg.textContent = 'Wrong password.';
+  });
 }
 document.getElementById('pgo').addEventListener('click', tryUnlock);
 document.getElementById('ppw').addEventListener('keydown', function(e){ if (e.key === 'Enter') tryUnlock(); });
-try { if (sessionStorage.getItem('photoUnlock') === '1') unlock(); } catch(e){}
+try { var su = sessionStorage.getItem('photoUnlockUrl'); if (su) unlock(su); } catch(e){}
 
 var drop = document.getElementById('drop'), pfile = document.getElementById('pfile');
 drop.addEventListener('click', function(){ pfile.click(); });

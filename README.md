@@ -41,9 +41,11 @@ Days 3 has no qualifying climb. Grades come from SRTM elevation data sampled eve
 The map page accepts photo drops. It reads each photo's EXIF **GPS position and timestamp**
 in your browser, places it on the map, and reports how far it sits from the planned line.
 
-- The panel is behind a shared password (ask the group).
-  It is a **speed bump, not security** — the page is static, so anyone can bypass the
-  gate with browser dev tools. It keeps casual visitors out, nothing more.
+- The panel is behind a shared password (ask the group). The **upload link is encrypted**
+  with that password using AES-256-GCM, with the key derived via PBKDF2-SHA256 at 310,000
+  iterations. The page holds only ciphertext, so the link genuinely cannot be recovered
+  without the password — this is not a hide-the-element gate.
+  Caveat: a short password can still be attacked offline by anyone who saves the page.
 - Photos **never leave your computer** — there is no upload, no server, no account.
 - A photo taken **on one of the ride dates** is trusted even when well off the line —
   being 2 miles off on the right day is a real detour, not a bad photo. It is matched
