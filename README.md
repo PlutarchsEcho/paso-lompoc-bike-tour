@@ -64,7 +64,9 @@ Each placed photo gets one of four roles, shown by dot colour:
 
 | Role | Dot | Meaning |
 |---|---|---|
-| **adjust** | orange | On a ride date and **75–250 m** off the line — close enough that the real route probably differed slightly. These propose a route adjustment. |
+| **adjust** | orange | Ride date, **07:00–18:00**, **75–250 m** off the line. Proposes a route adjustment. |
+| **evening** | purple | Ride date, after 18:00, near the line. Counts **only if that evening covered 0.5 mi or more** — unscheduled evening riding is part of the trip, standing outside a bar is not. |
+| **lodging** | grey | Within 300 m of where a day starts or finishes — camp or the hotel. Never changes a route. |
 | **poi** | day colour | On the line, or further than 250 m off — a point of interest. Never changes a route. |
 | **pretrip** | grey | Not taken on a ride date. Never changes a route. |
 | **train** | grey | Day 5, past the Amtrak platform. Never changes a route. |
@@ -75,7 +77,9 @@ file still has. Click any one to view it full size. They are listed in the expor
 nothing a rider sends goes missing just because their phone had location switched off.
 
 An adjustment is only **confirmed** when a cluster has 3+ photos or photos from 2+ cameras,
-so one person's stray GPS reading cannot move the line.
+**and** the group was actually moving. A huddle of photos inside 180 m spanning more than
+20 minutes is read as a stop, not a route — so an evening in one spot never redraws the line,
+however many photos it produces.
 
 The page itself never re-routes — it cannot, being static. Export the placements and the
 adjustment is applied offline with BRouter, then the updated GPX is published here. The five tracks are

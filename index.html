@@ -324,6 +324,14 @@ DAYS.forEach(function(d, di){
 var OFF_M = 75, CL_M = 400, CL_MIN = 45, REJECT_MI = 15, REJECT_M = REJECT_MI * 1609.34;
 // a photo this far off the line, on the right day, is evidence the real line differed a bit
 var ADJUST_MAX_M = 250;
+// riding hours: photos outside these only count if the group was clearly moving
+var RIDE_START_H = 7, RIDE_END_H = 18;
+// a huddle of photos within this radius that barely moves is a stop, not a route
+var STATIONARY_M = 180, STATIONARY_MIN = 20;
+// evening photos only count as riding if that evening covered real ground
+var EVENING_RIDE_MI = 0.5, EVENING_RIDE_MIN = 10;
+// within this of a day's start or finish you are at camp/the hotel, not riding
+var LODGING_M = 300;
 // day 5 ends at the Amtrak platform; anything from the train itself must never move a route
 var TRAIN_DAY = 4, TRAIN_TAIL_MI = 0.5;
 // tour dates: a photo taken on a day's date is treated as genuine even when well off the line
@@ -471,10 +479,17 @@ function addPhotos(files){
       var dayEndMi = DAYS[n.pt.day].mi;
       var onTrain = dayMatch && n.pt.day === TRAIN_DAY && (dayEndMi - n.pt.mile) < TRAIN_TAIL_MI
                     && n.dist > OFF_M;
+      var hr = when ? new Date(when).getHours() : null;
+      var inRideHours = hr === null ? true : (hr >= RIDE_START_H && hr < RIDE_END_H);
+      // near where the day starts or finishes = camp or hotel, so social rather than riding
+      var dl = DAYS[n.pt.day].line;
+      var atLodging = dayMatch && (hav([lat,lon], dl[0]) < LODGING_M ||
+                                   hav([lat,lon], dl[dl.length-1]) < LODGING_M);
       var role;
       if (!dayMatch) role = 'pretrip';
       else if (onTrain) role = 'train';
-      else if (n.dist > OFF_M && n.dist <= ADJUST_MAX_M) role = 'adjust';
+      else if (atLodging) role = 'lodging';
+      else if (n.dist > OFF_M && n.dist <= ADJUST_MAX_M) role = inRideHours ? 'adjust' : 'evening';
       else role = 'poi';
       var p = {name:f.name, lat:lat, lon:lon, time:when ? new Date(when).toISOString() : null,
                camera:cam, day:n.pt.day, mile:+n.pt.mile.toFixed(2), off:Math.round(n.dist),
@@ -482,7 +497,8 @@ function addPhotos(files){
       photos.push(p);
       thumb(f, function(src){
         p.thumb = src;
-        var ROLE_COL = {adjust:'#e07a00', poi:DAYS[p.day].color, pretrip:'#8a8a90', train:'#8a8a90'};
+        var ROLE_COL = {adjust:'#e07a00', evening:'#6a4c93', lodging:'#8a8a90',
+                        poi:DAYS[p.day].color, pretrip:'#8a8a90', train:'#8a8a90'};
         var col = ROLE_COL[p.role] || DAYS[p.day].color, bad = (p.role === 'adjust');
         var mk = L.marker([lat,lon], {icon:L.divIcon({className:'',
           html:'<div class="pmark" style="background:'+(bad?'#b00020':col)+'"></div>',
@@ -492,7 +508,9 @@ function addPhotos(files){
           '<br>'+(p.time ? new Date(p.time).toLocaleString() : 'no timestamp')+
           '<br>'+(bad ? '<span style="color:#b00020">'+(p.off>1609 ? (p.off/1609.34).toFixed(1)+' mi' : p.off+' m')+' off the planned route</span>'
                       : p.off+' m from route')+
-          '<br>'+({adjust:'<span style="color:#e07a00"><b>close to the line \u2014 route adjustment candidate</b></span>',
+          '<br>'+({adjust:'<span style="color:#e07a00"><b>close to the line in riding hours \u2014 adjustment candidate</b></span>',
+                   evening:'<span style="color:#6a4c93">evening \u2014 counts only if the group was moving</span>',
+                   lodging:'<span style="opacity:.7">at camp or the hotel \u2014 never adjusts a route</span>',
                    poi:'<span style="opacity:.7">point of interest</span>',
                    train:'<span style="opacity:.7">from the train \u2014 never adjusts a route</span>',
                    pretrip:'<span style="opacity:.7">not on a ride date \u2014 pre-trip image</span>'}[p.role])+
@@ -504,8 +522,26 @@ function addPhotos(files){
     function step(){ if (++done === list.length) render(); }
   });
 }
+// did the group actually ride that evening, or just go out on foot?
+function eveningRideDays(){
+  var byDay = {};
+  photos.forEach(function(p){
+    if (p.role !== 'evening' || !p.time) return;
+    (byDay[p.day] = byDay[p.day] || []).push(p);
+  });
+  var out = {};
+  Object.keys(byDay).forEach(function(d){
+    var ms = byDay[d].map(function(p){ return p.mile; });
+    var ts = byDay[d].map(function(p){ return new Date(p.time).getTime(); });
+    var miles = Math.max.apply(null, ms) - Math.min.apply(null, ms);
+    var mins = (Math.max.apply(null, ts) - Math.min.apply(null, ts)) / 60000;
+    out[d] = (miles >= EVENING_RIDE_MI && mins >= EVENING_RIDE_MIN);
+  });
+  return out;
+}
 function deviations(){
-  var off = photos.filter(function(p){ return p.role === 'adjust' && p.time; })
+  var rideEve = eveningRideDays();
+  var off = photos.filter(function(p){ return (p.role === 'adjust' || p.role === 'evening') && p.time; })
                   .sort(function(a,b){ return new Date(a.time) - new Date(b.time); });
   var groups = [];
   off.forEach(function(p){
@@ -521,11 +557,23 @@ function deviations(){
   return groups.map(function(g){
     var cams = {}; g.items.forEach(function(p){ cams[p.camera] = 1; });
     var nc = Object.keys(cams).length;
+    // how far did the group actually travel across this cluster?
+    var spread = 0;
+    for (var a = 0; a < g.items.length; a++)
+      for (var b = a+1; b < g.items.length; b++)
+        spread = Math.max(spread, hav([g.items[a].lat,g.items[a].lon],[g.items[b].lat,g.items[b].lon]));
+    var ts = g.items.map(function(p){ return new Date(p.time); });
+    var mins = (Math.max.apply(null, ts) - Math.min.apply(null, ts)) / 60000;
+    var stationary = (spread < STATIONARY_M && mins > STATIONARY_MIN);
+    var evening = g.items.every(function(p){ return p.role === 'evening'; });
     var miles = g.items.map(function(p){ return p.mile; });
     return {day:g.day, count:g.items.length, cameras:nc,
       fromMile:Math.min.apply(null,miles), toMile:Math.max.apply(null,miles),
       avgOff:Math.round(g.items.reduce(function(a,p){return a+p.off;},0)/g.items.length),
-      confirmed:(g.items.length >= 3 || nc >= 2),
+      spreadM:Math.round(spread), spanMin:Math.round(mins),
+      stationary:stationary, evening:evening, eveningRide:!!rideEve[g.day],
+      confirmed:((g.items.length >= 3 || nc >= 2) && !stationary &&
+                 (!evening || !!rideEve[g.day])),
 
       points:g.items.map(function(p){ return [p.lat, p.lon]; })};
   });
@@ -573,19 +621,24 @@ function render(){
     '<br><b>'+offN+'</b> more than '+OFF_M+' m off the planned line.';
   var devs = deviations();
   devs.forEach(function(d){
-    var head = d.confirmed ? '<b>Route adjustment proposed here</b>'
-                           : 'Possible adjustment (weak evidence \u2014 one photo)';
+    var head;
+    if (d.confirmed) head = '<b>Route adjustment proposed here</b>';
+    else if (d.stationary) head = 'Stayed put here \u2014 a stop, not a route change';
+    else if (d.evening && !d.eveningRide) head = 'Evening, and the group stayed put \u2014 treated as a stop';
+    else if (d.evening) head = 'Evening ride \u2014 possible adjustment (needs more photos)';
+    else head = 'Possible adjustment (weak evidence)';
     h += '<div class="dev'+(d.confirmed ? '' : ' ok')+'">'+ head +
       '<br>'+DAYS[d.day].title.split(' \u00b7')[0]+', mile '+d.fromMile.toFixed(1)+'\u2013'+d.toMile.toFixed(1)+
       '<br>'+d.count+' photo(s), '+d.cameras+' camera(s), avg '+d.avgOff+' m off'+
+      '<br><span style="opacity:.7">spread '+d.spreadM+' m over '+d.spanMin+' min</span>'+
       '</div>';
   });
   if (!devs.length) h += '<div class="dev ok">No deviations detected \u2014 photos match the planned routes.</div>';
   h += '<div style="font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.4">'+
-       'Orange dots sit within '+ADJUST_MAX_M+' m of the line on a ride date \u2014 these propose a '+
-       'route adjustment. Grey dots are pre-trip or from the train and never do. Coloured dots are '+
-       'points of interest. The page cannot re-route: export the file and the adjustment is applied '+
-       'offline with the router.</div>';
+       'Orange dots: near the line between '+RIDE_START_H+':00 and '+RIDE_END_H+':00 \u2014 these propose an '+
+       'adjustment. Purple: evening, which counts only if that evening covered at least '+
+       EVENING_RIDE_MI+' mi. Grey: pre-trip, the train, or camp and hotel. A tight huddle is a stop, '+
+       'never a route.</div>';
   st.innerHTML = h + rej + nogpsHtml();
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
                          rejectThresholdMi:REJECT_MI, adjustMaxM:ADJUST_MAX_M, rejected:rejected,
