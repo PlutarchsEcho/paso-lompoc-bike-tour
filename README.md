@@ -36,6 +36,25 @@ The **whole climb** is drawn on the map, with a **black overlay on the steepest 
 Days 3 has no qualifying climb. Grades come from SRTM elevation data sampled every
 25 m and lightly smoothed; treat them as approximate, especially the maxima.
 
+## Breadcrumb trail
+
+Days rarely survive contact with the plan, so the map also reconstructs **where people
+actually went, from the photos alone**. Photos for a day are ordered by timestamp and
+joined leg by leg; each leg's implied speed says how it was travelled:
+
+| Leg | Drawn as | Meaning |
+|---|---|---|
+| **riding** | solid black | a plausible cycling speed for that distance |
+| **stopped** | green dots | under 0.6 mph — a coffee, a brewery, a photo scrum |
+| **by vehicle** | dashed red | too fast to have been ridden — a shuttle, a lift, the train |
+| **unexplained** | grey dashes | over 90 minutes with no photos |
+
+The plausible ceiling falls as a leg gets longer — 45 mph over half a mile is a descent,
+20 mph sustained over four miles is a car. Moving average excludes stops and vehicle legs.
+
+This is independent of the planned route: a day that went nowhere near the plan still
+produces a coherent trail.
+
 ## Ride photos
 
 The map page accepts photo drops. It reads each photo's EXIF **GPS position and timestamp**

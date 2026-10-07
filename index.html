@@ -330,6 +330,17 @@ var RIDE_START_H = 7, RIDE_END_H = 18;
 var STATIONARY_M = 180, STATIONARY_MIN = 20;
 // evening photos only count as riding if that evening covered real ground
 var EVENING_RIDE_MI = 0.5, EVENING_RIDE_MIN = 10;
+// breadcrumb: what a leg between two photos implies about how you travelled
+var MOVING_MIN_MPH = 0.6,   // slower and you were standing still
+    LEG_GAP_MIN = 90;       // a longer silence than this is an unknown stretch
+// a short burst at 35 mph is a descent; ten miles at 30 is a car. so the
+// plausible ceiling falls as the leg gets longer.
+function bikeCeilingMph(mi){
+  if (mi < 0.5) return 45;
+  if (mi < 1.5) return 35;
+  if (mi < 4)   return 26;
+  return 20;
+}
 // within this of a day's start or finish you are at camp/the hotel, not riding
 var LODGING_M = 300;
 // day 5 ends at the Amtrak platform; anything from the train itself must never move a route
@@ -379,6 +390,61 @@ function galleryHtml(list){
          when+'</div>';
   });
   return h + '</div></div>';
+}
+var crumbLayer = L.layerGroup().addTo(map);
+var LEG_STYLE = {
+  ride:      {color:'#111', weight:3,   opacity:.9,  dashArray:null},
+  stop:      {color:'#2e8b57', weight:3, opacity:.5, dashArray:'1,6'},
+  transport: {color:'#b00020', weight:3, opacity:.8, dashArray:'10,6'},
+  gap:       {color:'#8a8a90', weight:2, opacity:.6, dashArray:'3,7'}
+};
+// reconstruct where people actually went, from the photos alone
+function breadcrumbs(){
+  var byDay = {};
+  photos.forEach(function(p){
+    if (!p.time) return;
+    (byDay[p.day] = byDay[p.day] || []).push(p);
+  });
+  var out = [];
+  Object.keys(byDay).forEach(function(dk){
+    var list = byDay[dk].slice().sort(function(a,b){ return new Date(a.time) - new Date(b.time); });
+    if (list.length < 2) { out.push({day:+dk, pts:list, legs:[], miles:0, movingMph:0, span:0}); return; }
+    var legs = [], miles = 0, movingMi = 0, movingHr = 0;
+    for (var i = 1; i < list.length; i++){
+      var a = list[i-1], b = list[i];
+      var m = hav([a.lat,a.lon],[b.lat,b.lon]) / 1609.34;
+      var hrs = (new Date(b.time) - new Date(a.time)) / 3600000;
+      var mins = hrs * 60;
+      var mph = hrs > 0 ? m / hrs : 0;
+      var kind;
+      if (mins > LEG_GAP_MIN) kind = 'gap';
+      else if (mph > bikeCeilingMph(m)) kind = 'transport';
+      else if (mph < MOVING_MIN_MPH) kind = 'stop';
+      else kind = 'ride';
+      if (kind === 'ride'){ movingMi += m; movingHr += hrs; }
+      miles += m;
+      legs.push({from:a, to:b, mi:m, mins:mins, mph:mph, kind:kind});
+    }
+    var span = (new Date(list[list.length-1].time) - new Date(list[0].time)) / 60000;
+    out.push({day:+dk, pts:list, legs:legs, miles:miles,
+              movingMph: movingHr > 0 ? movingMi/movingHr : 0, span:span});
+  });
+  return out.sort(function(a,b){ return a.day - b.day; });
+}
+function drawBreadcrumbs(){
+  crumbLayer.clearLayers();
+  breadcrumbs().forEach(function(t){
+    t.legs.forEach(function(lg){
+      var st = LEG_STYLE[lg.kind];
+      L.polyline([[lg.from.lat,lg.from.lon],[lg.to.lat,lg.to.lon]], st)
+       .bindPopup('<b>'+DAYS[t.day].title.split(' \u00b7')[0]+'</b><br>'+
+         lg.from.name+' \u2192 '+lg.to.name+'<br>'+
+         lg.mi.toFixed(2)+' mi in '+Math.round(lg.mins)+' min \u00b7 '+lg.mph.toFixed(1)+' mph'+
+         '<br><b>'+({ride:'riding', stop:'stopped', transport:'in a vehicle \u2014 not riding',
+                     gap:'no photos for a while'}[lg.kind])+'</b>')
+       .addTo(crumbLayer);
+    });
+  });
 }
 var galList = [], galPopup = null;
 function openGallery(latlng, list){
@@ -578,6 +644,25 @@ function deviations(){
       points:g.items.map(function(p){ return [p.lat, p.lon]; })};
   });
 }
+function crumbHtml(){
+  var ts = breadcrumbs().filter(function(t){ return t.legs.length; });
+  if (!ts.length) return '';
+  var h = '<details id="crumbs" class="sect" open><summary>Breadcrumb trail'+
+          '<span class="cnt">'+ts.length+' day'+(ts.length>1?'s':'')+'</span></summary><div class="inner">'+
+          '<div class="cnote">the path the photos themselves describe, independent of the plan</div>';
+  ts.forEach(function(t){
+    var k = {ride:0, stop:0, transport:0, gap:0};
+    t.legs.forEach(function(l){ k[l.kind]++; });
+    h += '<div class="st" style="margin-bottom:6px">'+
+      '<b>'+DAYS[t.day].title.split(' \u00b7')[0]+'</b> \u00b7 '+t.pts.length+' photos<br>'+
+      t.miles.toFixed(1)+' mi point-to-point \u00b7 '+Math.round(t.span/60*10)/10+' h'+
+      (t.movingMph ? ' \u00b7 '+t.movingMph.toFixed(1)+' mph moving' : '')+'<br>'+
+      '<span style="opacity:.75">'+k.ride+' riding, '+k.stop+' stopped'+
+      (k.transport ? ', <span style="color:#b00020">'+k.transport+' by vehicle</span>' : '')+
+      (k.gap ? ', '+k.gap+' unexplained' : '')+'</span></div>';
+  });
+  return h + '</div></details>';
+}
 function nogpsHtml(){
   if (!noGpsPhotos.length) return '';
   var h = '<details id="nogps" class="sect"><summary>Photos without location'+
@@ -639,12 +724,21 @@ function render(){
        'adjustment. Purple: evening, which counts only if that evening covered at least '+
        EVENING_RIDE_MI+' mi. Grey: pre-trip, the train, or camp and hotel. A tight huddle is a stop, '+
        'never a route.</div>';
-  st.innerHTML = h + rej + nogpsHtml();
+  st.innerHTML = h + crumbHtml() + rej + nogpsHtml();
+  drawBreadcrumbs();
   window.__placements = {generated:new Date().toISOString(), offRouteThresholdM:OFF_M,
                          rejectThresholdMi:REJECT_MI, adjustMaxM:ADJUST_MAX_M, rejected:rejected,
                          roleCounts:photos.reduce(function(a,p){ a[p.role]=(a[p.role]||0)+1; return a; },{}),
                          noLocation:noGpsPhotos.map(function(p){
                            return {name:p.name, time:p.time, camera:p.camera}; }),
+                         breadcrumbs:breadcrumbs().map(function(t){
+                           return {day:t.day, photos:t.pts.length, miles:+t.miles.toFixed(2),
+                                   spanMin:Math.round(t.span), movingMph:+t.movingMph.toFixed(1),
+                                   legs:t.legs.map(function(l){
+                                     return {kind:l.kind, mi:+l.mi.toFixed(3), mins:Math.round(l.mins),
+                                             mph:+l.mph.toFixed(1),
+                                             from:[l.from.lat,l.from.lon], to:[l.to.lat,l.to.lon]}; })};
+                         }),
                          photos:photos, deviations:devs};
 }
 var LINK_BLOB = {"v": 1, "kdf": "PBKDF2-SHA256", "iter": 310000, "salt": "baOaA+L+iaOYHZt2IS+PLQ==", "iv": "7rXfmh7wgyYROeNH", "ct": "KjeixVI3A9Y0GMc4LW9IhTBJszquuOlBsoiPseup2X9gkgeu+AMmStOsPdLlt1SKOy+xLgFiS4MLYhL1VZb2UG9lFTSY4u0="};
@@ -701,7 +795,7 @@ pfile.addEventListener('change', function(e){ addPhotos(e.target.files); });
   drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('hot'); }); });
 drop.addEventListener('drop', function(e){ addPhotos(e.dataTransfer.files); });
 document.getElementById('pclear').addEventListener('click', function(){
-  photos = []; noGps = 0; rejected = []; noGpsPhotos = []; photoLayer.clearLayers(); render(); });
+  photos = []; noGps = 0; rejected = []; noGpsPhotos = []; photoLayer.clearLayers(); crumbLayer.clearLayers(); render(); });
 document.getElementById('pexport').addEventListener('click', function(){
   if (!photos.length) return;
   var b = new Blob([JSON.stringify(window.__placements, null, 2)], {type:'application/json'});
